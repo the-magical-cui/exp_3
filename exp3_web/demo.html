@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>人格特質小測驗</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-0: #f4f3f0;
+    --surface-1: #fcfcfb;
+    --border: #e2e1dc;
+    --grid: #dcdbd5;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #7a7973;
+    --series-1: #2a78d6;
+    --series-1-fill: rgba(42, 120, 214, 0.18);
+    --accent: #2a78d6;
+    --accent-ink: #ffffff;
+    --chip: #ecebe6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --surface-0: #121211;
+      --surface-1: #1a1a19;
+      --border: #2e2e2c;
+      --grid: #3a3a37;
+      --text-primary: #f0efec;
+      --text-secondary: #c3c2b7;
+      --text-muted: #8f8e86;
+      --series-1: #3987e5;
+      --series-1-fill: rgba(57, 135, 229, 0.22);
+      --accent: #3987e5;
+      --accent-ink: #ffffff;
+      --chip: #262624;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--surface-0);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", "Segoe UI", sans-serif;
+    line-height: 1.6;
+  }
+  main { max-width: 720px; margin: 0 auto; padding: 32px 20px 64px; }
+  h1 { font-size: 1.6rem; margin: 0 0 8px; }
+  h2 { font-size: 1.2rem; margin: 0 0 12px; }
+  p { margin: 0 0 12px; }
+  .muted { color: var(--text-secondary); }
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .scale-legend {
+    display: flex; flex-wrap: wrap; gap: 6px 14px;
+    font-size: 0.85rem; color: var(--text-secondary);
+  }
+  .progress-wrap {
+    position: sticky; top: 0; z-index: 2;
+    background: var(--surface-0);
+    padding: 10px 0;
+  }
+  .progress { height: 6px; background: var(--chip); border-radius: 3px; overflow: hidden; }
+  .progress > div { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+  .progress-text { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
+
+  .item { padding: 16px 0; border-bottom: 1px solid var(--border); }
+  .item:last-child { border-bottom: none; }
+  .item.missing .q { color: #e34948; }
+  .q { font-weight: 600; margin-bottom: 10px; }
+  .q .num { color: var(--text-muted); font-weight: 400; margin-right: 6px; }
+  .opts { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .opts label {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 8px 4px; border: 1px solid var(--border); border-radius: 8px;
+    cursor: pointer; font-size: 0.75rem; color: var(--text-secondary); text-align: center;
+    user-select: none;
+  }
+  .opts input { position: absolute; opacity: 0; pointer-events: none; }
+  .opts .n { font-size: 1rem; font-weight: 600; color: var(--text-primary); }
+  .opts label:has(input:checked) { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+  .opts label:has(input:checked) .n { color: var(--accent-ink); }
+  .opts label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  button.primary {
+    display: block; width: 100%;
+    padding: 14px; font-size: 1rem; font-weight: 600;
+    border: none; border-radius: 10px;
+    background: var(--accent); color: var(--accent-ink); cursor: pointer;
+  }
+  button.secondary {
+    padding: 10px 16px; font-size: 0.9rem;
+    border: 1px solid var(--border); border-radius: 8px;
+    background: var(--surface-1); color: var(--text-primary); cursor: pointer;
+  }
+  .error { color: #e34948; font-size: 0.9rem; margin-top: 10px; min-height: 1.2em; }
+
+  #results { display: none; }
+  .chart-wrap { position: relative; max-width: 440px; margin: 0 auto; }
+  .chart-wrap svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .axis-label { fill: var(--text-primary); font-size: 13px; font-weight: 600; }
+  .axis-value { fill: var(--text-secondary); font-size: 12px; }
+  .tick { fill: var(--text-muted); font-size: 10px; paint-order: stroke; stroke: var(--surface-1); stroke-width: 3px; }
+  .tooltip {
+    position: absolute; pointer-events: none; opacity: 0;
+    background: var(--surface-1); color: var(--text-primary);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 6px 10px; font-size: 0.8rem; white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0,0,0,.12); transform: translate(-50%, -120%);
+    transition: opacity .1s;
+  }
+  .legend { display: flex; justify-content: center; gap: 8px; align-items: center;
+    font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px; }
+  .legend .swatch { width: 12px; height: 12px; border-radius: 3px; background: var(--series-1); }
+
+  .trait { padding: 14px 0; border-bottom: 1px solid var(--border); }
+  .trait:last-child { border-bottom: none; }
+  .trait-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .trait-name { font-weight: 700; }
+  .trait-score { font-variant-numeric: tabular-nums; color: var(--text-secondary); font-size: 0.9rem; }
+  .level { display: inline-block; font-size: 0.75rem; padding: 1px 8px; border-radius: 10px;
+    background: var(--chip); color: var(--text-secondary); margin-left: 6px; }
+  .bar { height: 6px; background: var(--chip); border-radius: 3px; margin: 8px 0; overflow: hidden; }
+  .bar > div { height: 100%; background: var(--series-1); border-radius: 3px; }
+  .trait p { font-size: 0.92rem; color: var(--text-secondary); margin: 0; }
+
+  details { margin-top: 12px; font-size: 0.85rem; }
+  details table { border-collapse: collapse; margin-top: 8px; width: 100%; }
+  details th, details td { border-bottom: 1px solid var(--border); padding: 6px 8px; text-align: left; }
+  details td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .share-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .share-actions button.primary { width: auto; flex: 1 1 auto; padding: 12px 18px; }
+  #sharePanel { display: none; margin-top: 14px; }
+  #sharePanel img { width: 100%; max-width: 360px; display: block; margin: 0 auto 12px;
+    border: 1px solid var(--border); border-radius: 8px; }
+  .share-text { background: var(--chip); border-radius: 8px; padding: 12px; font-size: 0.95rem; }
+  .share-status { font-size: 0.8rem; color: var(--text-muted); margin-top: 6px; min-height: 1.2em; }
+
+  /* ---------- 社群動態頁（仿串文介面） ---------- */
+  #feed, #rating, #done, #postView, #profileView, #psView { display: none; }
+  .feed-wrap { max-width: 640px; margin: 0 auto; background: var(--surface-1);
+    border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+  .feed-profile { padding: 24px 24px 16px; border-bottom: 1px solid var(--border); }
+  .feed-profile .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .feed-profile .handle { font-size: 1.4rem; font-weight: 700; }
+  .feed-profile .meta { color: var(--text-muted); font-size: 0.9rem; margin-top: 4px; }
+  .feed-tabs { display: flex; border-bottom: 1px solid var(--border); }
+  .feed-tabs div { flex: 1; text-align: center; padding: 12px 0; font-weight: 600; color: var(--text-muted); }
+  .feed-tabs div.on { color: var(--text-primary); border-bottom: 2px solid var(--text-primary); }
+  .post { display: grid; grid-template-columns: 44px 1fr; gap: 12px; padding: 16px 20px 10px;
+    border-bottom: 1px solid var(--border); }
+  .avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--chip);
+    display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .avatar svg { width: 26px; height: 26px; fill: var(--text-muted); }
+  .avatar.big { width: 72px; height: 72px; }
+  .avatar.big svg { width: 46px; height: 46px; }
+  .post-head { display: flex; align-items: baseline; gap: 8px; }
+  .post-user { font-weight: 700; }
+  .post-time { color: var(--text-muted); font-size: 0.9rem; }
+  .post-translate { color: var(--text-muted); font-size: 0.8rem; margin-top: 2px; }
+  .post-body { margin-top: 6px; white-space: pre-wrap; font-size: 1rem; }
+  .post-img { margin-top: 10px; width: 100%; max-width: 360px; height: auto; border-radius: 10px;
+    border: 1px solid var(--border); display: block; }
+  .post-actions { display: flex; gap: 28px; margin-top: 10px; color: var(--text-primary); }
+  .post-actions span { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; }
+  .post-actions svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8;
+    stroke-linecap: round; stroke-linejoin: round; }
+  .placeholder { background: #fff3cd; color: #6b5300; border: 1px dashed #d4a500;
+    border-radius: 8px; padding: 10px 12px; font-size: 0.9rem; }
+  .feed-next { max-width: 640px; margin: 16px auto 0; }
+  .likert { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 10px; }
+  .likert label { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 2px;
+    border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: 0.7rem;
+    color: var(--text-secondary); text-align: center; }
+  .likert input { position: absolute; opacity: 0; pointer-events: none; }
+  .likert .n { font-size: 1rem; font-weight: 600; color: var(--text-primary); }
+  .likert label:has(input:checked) { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .likert label:has(input:checked) .n { color: var(--accent-ink); }
+  .likert-ends { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
+  .quoted { border: 1px solid var(--border); border-radius: 12px; margin: 12px 0; }
+  .quoted .post { border-bottom: none; }
+
+  .view-note { max-width: 640px; margin: 0 auto 16px; }
+  .home-head { padding: 14px 20px; border-bottom: 1px solid var(--border); font-weight: 700; text-align: center; }
+  .clickable { cursor: pointer; }
+  .post .clickable:hover { text-decoration: underline; }
+  .post.highlight .post-user, .post.highlight .avatar { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+  .pinned { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px; display: flex; align-items: center; gap: 4px; }
+  .feed-bio { margin-top: 10px; font-size: 0.95rem; }
+
+  /* 對目標人物的 Mini-IPIP 題：受試者自己的答案用淺灰色標記 */
+  .opts label.self { background: var(--chip); border-color: var(--text-muted); border-style: dashed; }
+  .opts .selftag { font-size: 0.7rem; color: var(--text-muted); }
+  .opts label:has(input:checked) .selftag { color: var(--accent-ink); }
+  .likert10 { grid-template-columns: repeat(10, 1fr); }
+  .footer-note { font-size: 0.8rem; color: var(--text-muted); margin-top: 8px; }
+</style>
+</head>
+<body><div id="devbar" style="position:sticky;top:0;z-index:10;
+  background:#0b0b0b;color:#fff;padding:8px 12px;font-size:13px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;">
+  <span>Demo</span>
+  <label>組別 <select id="pvCond"><option value="similar">相似</option><option value="dissimilar">不相似</option></select></label>
+  <label>順序 <select id="pvOrder"><option value="profileFirst">先看個人頁</option><option value="behaviorFirst">先看貼文</option></select></label>
+  <label>拉丁方格 <select id="pvList"><option>1</option><option>2</option><option>3</option></select></label>
+  <button id="pvSkip">跳過量表（用範例分數）</button>
+  <button id="pvRestart">從量表重新開始</button>
+  <span id="pvInfo" style="opacity:.8"></span>
+</div>
+<main>
+  <section id="intro" class="card">
+    <h1>人格特質小測驗</h1>
+    <p class="muted">以下是一些描述人們行為的句子。請描述你現在通常的樣子，而不是你希望未來成為的樣子。請和你認識、性別相同且年齡相近的人相比，誠實地描述你眼中的自己。</p>
+    <p class="muted">共 20 題，約 2 分鐘。請依每個句子描述你的準確程度作答：</p>
+    <div class="scale-legend">
+      <span>1 非常不符合</span><span>2 有點不符合</span><span>3 普通</span><span>4 有點符合</span><span>5 非常符合</span>
+    </div>
+  </section>
+
+  <form id="quiz" novalidate>
+    <div class="progress-wrap">
+      <div class="progress"><div id="progressBar"></div></div>
+      <div class="progress-text" id="progressText">0 / 20</div>
+    </div>
+    <div class="card" id="items"></div>
+    <button type="button" class="primary" id="seeResults">看結果</button>
+    <div class="error" id="error" role="alert"></div>
+  </form>
+
+  <section id="results">
+    <div class="card">
+      <h2>你的人格剖面</h2>
+      <div class="chart-wrap" id="chartWrap">
+        <svg id="radar" viewBox="0 0 440 420" role="img" aria-labelledby="radarTitle">
+          <title id="radarTitle">五大人格向度蛛網圖</title>
+        </svg>
+        <div class="tooltip" id="tooltip"></div>
+      </div>
+      <div class="legend"><span class="swatch"></span><span>你的分數（1–5 分）</span></div>
+      <details>
+        <summary>以表格檢視分數</summary>
+        <table id="scoreTable">
+          <thead><tr><th>向度</th><th style="text-align:right">平均分數（1–5）</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </details>
+      <div class="share-actions">
+        <button type="button" class="primary" id="shareBtn">儲存並分享結果</button>
+      </div>
+      <div id="sharePanel">
+        <img id="shareImg" alt="測驗結果分享圖">
+        <div class="share-text" id="shareText"></div>
+        <div class="share-actions">
+          <button type="button" class="secondary" id="copyBtn">複製文字</button>
+          <button type="button" class="secondary" id="downloadBtn">再下載一次圖片</button>
+        </div>
+        <div class="share-status" id="shareStatus" role="status"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>各向度說明</h2>
+      <div id="traits"></div>
+      <p class="footer-note">分數是各向度 4 題的平均（1–5 分）。高低只代表傾向，沒有好壞之分。向度定義參考 Soto &amp; John (2017)。</p>
+    </div>
+
+    <div class="share-actions">
+      <button type="button" class="secondary" id="restart">重新作答</button>
+      <button type="button" class="primary" id="toFeed">繼續</button>
+    </div>
+  </section>
+
+  <section id="postView">
+    <div class="card view-note"><p class="muted" style="margin:0" id="postNote"></p></div>
+    <div class="feed-wrap">
+      <div class="home-head" id="postHead"></div>
+      <div id="postSlot"></div>
+    </div>
+    <div class="feed-next"><button type="button" class="primary" id="postNext">繼續</button></div>
+  </section>
+
+  <section id="profileView">
+    <div class="card view-note"><p class="muted" style="margin:0" id="profileNote"></p></div>
+    <div class="feed-wrap">
+      <div class="feed-profile">
+        <div class="row">
+          <div>
+            <div class="handle" id="feedHandle"></div>
+            <div class="meta" id="feedMeta"></div>
+          </div>
+          <div class="avatar big" id="feedAvatarBig"></div>
+        </div>
+      </div>
+      <div class="feed-tabs"><div class="on">串文</div><div>回覆</div><div>轉發</div></div>
+      <div id="feedPosts"></div>
+    </div>
+    <div class="feed-next"><button type="button" class="primary" id="profileNext">繼續</button></div>
+  </section>
+
+  <section id="psView">
+    <div class="card" style="max-width:640px;margin:0 auto;">
+      <h2>關於剛剛那位使用者</h2>
+      <p class="muted" id="psHandle"></p>
+      <p class="q">整體而言，你覺得這位使用者跟你有多相似？</p>
+      <div class="likert likert10" id="psScale"></div>
+      <div class="likert-ends"><span>1 完全不相似</span><span>10 非常相似</span></div>
+
+      <p class="q" style="margin-top:24px">下面每一句話，有多符合你對這位使用者的印象？</p>
+      <p class="muted" style="font-size:0.85rem;margin:4px 0 0" id="selfMarkNote">灰色虛線框是你自己在人格測驗裡對同一題的回答，供你參考。</p>
+      <div id="targetItems"></div>
+      <div class="error" id="psError" role="alert"></div>
+      <button type="button" class="primary" id="psNext" style="margin-top:16px">繼續</button>
+    </div>
+  </section>
+
+  <section id="rating">
+    <div class="card" style="max-width:640px;margin:0 auto;">
+      <h2>請評估下面這則貼文</h2>
+      <div class="quoted" id="ratingPost"></div>
+      <p class="q">你覺得這則貼文中描述的行為有多恰當？</p>
+      <div class="likert" id="appropriate"></div>
+      <div class="likert-ends"><span>1 非常不恰當</span><span>7 非常恰當</span></div>
+      <div class="error" id="ratingError" role="alert"></div>
+      <button type="button" class="primary" id="submitRating" style="margin-top:16px">送出</button>
+    </div>
+  </section>
+
+  <section id="done">
+    <div class="card" style="max-width:640px;margin:0 auto;">
+      <h2>謝謝你的作答！</h2>
+      <p class="muted">（開發用：下面是這次會存下來的資料）</p>
+      <pre id="dataDump" style="white-space:pre-wrap;font-size:0.75rem;"></pre>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ============================================================
+   Mini-IPIP (Donnellan, Oswald, Baird, & Lucas, 2006)
+   中文為未驗證翻譯；key: 1 = 正向計分，-1 = 反向計分
+   ============================================================ */
+const ITEMS = [
+  { id: 1,  trait: "E", key:  1, text: "我是聚會中的靈魂人物。" },
+  { id: 2,  trait: "A", key:  1, text: "我會同理別人的感受。" },
+  { id: 3,  trait: "C", key:  1, text: "我會馬上把雜事做完。" },
+  { id: 4,  trait: "N", key:  1, text: "我的情緒常常起伏不定。" },
+  { id: 5,  trait: "O", key:  1, text: "我的想像力很豐富。" },
+  { id: 6,  trait: "E", key: -1, text: "我話不多。" },
+  { id: 7,  trait: "A", key: -1, text: "我對別人的問題不感興趣。" },
+  { id: 8,  trait: "C", key: -1, text: "我常常忘記把東西放回原位。" },
+  { id: 9,  trait: "N", key: -1, text: "我大部分時候都很放鬆。" },
+  { id: 10, trait: "O", key: -1, text: "我對抽象的想法不感興趣。" },
+  { id: 11, trait: "E", key:  1, text: "在聚會中，我會跟許多不同的人聊天。" },
+  { id: 12, trait: "A", key:  1, text: "我能感受到別人的情緒。" },
+  { id: 13, trait: "C", key:  1, text: "我喜歡井然有序。" },
+  { id: 14, trait: "N", key:  1, text: "我很容易心煩意亂。" },
+  { id: 15, trait: "O", key: -1, text: "我很難理解抽象的想法。" },
+  { id: 16, trait: "E", key: -1, text: "在團體中，我習慣低調、不引人注意。" },
+  { id: 17, trait: "A", key: -1, text: "我對別人沒什麼興趣。" },
+  { id: 18, trait: "C", key: -1, text: "我會把事情搞得一團亂。" },
+  { id: 19, trait: "N", key: -1, text: "我很少感到憂鬱。" },
+  { id: 20, trait: "O", key: -1, text: "我的想像力不太好。" },
+];
+
+const SCALE = ["非常不符合", "有點不符合", "普通", "有點符合", "非常符合"];
+
+/* 向度順序就是蛛網圖上順時針的順序（從正上方開始） */
+/* 向度定義依 Soto & John (2017, JPSP, 113, 117–143) 對大五各向度的界定改寫，
+   高／中／低的描述只對應 Mini-IPIP 實際測到的內容（例如開放性主要測想像力與智性興趣）。 */
+const TRAITS = [
+  { code: "E", name: "外向性",
+    summary: "想主動接近他人、參與社交的程度，也包括在人群中表達自己、精力充沛的程度。",
+    high: "你的分數偏高：在聚會等場合比較自在，喜歡跟各式各樣的人聊天，常是場合裡比較活躍的那一個。",
+    mid:  "你的分數在中間：你可以享受跟人互動，也需要自己的時間，會依場合調整。",
+    low:  "你的分數偏低：你比較安靜，習慣待在不太顯眼的位置，跟少數熟人相處時比較自在。" },
+  { code: "A", name: "親和性",
+    summary: "主動關心他人感受與福祉、尊重他人，並對他人抱持正面看法的程度。",
+    high: "你的分數偏高：你很容易感受到別人的情緒，也會在意別人遇到的問題。",
+    mid:  "你的分數在中間：你會關心身邊的人，但也會保留自己的判斷和距離。",
+    low:  "你的分數偏低：你比較不會被別人的情緒或問題牽動，對他人的事情保持一點距離。" },
+  { code: "C", name: "嚴謹性",
+    summary: "偏好秩序和結構、做事有始有終，以及對該負的責任投入的程度。",
+    high: "你的分數偏高：你喜歡事情井然有序，該做的事會馬上處理，東西也習慣放回原位。",
+    mid:  "你的分數在中間：重要的事你會好好安排，其他時候保留一些彈性。",
+    low:  "你的分數偏低：你做事比較隨興，不太被秩序和計畫綁住。" },
+  { code: "N", name: "神經質",
+    summary: "經驗負面情緒（例如擔心、低落、心情起伏）的頻率和強度；分數越高，情緒越容易受影響。",
+    high: "你的分數偏高：你的心情比較容易起伏，遇到事情時也比較容易心煩。",
+    mid:  "你的分數在中間：你大多時候能保持平穩，但壓力大時情緒還是會受影響。",
+    low:  "你的分數偏低：你大部分時候都很放鬆，比較少感到心煩或低落。" },
+  { code: "O", name: "開放性",
+    summary: "對想法、抽象概念和創意想像的興趣與投入程度（這份量表主要測想像力與智性興趣）。",
+    high: "你的分數偏高：你的想像力豐富，也喜歡思考抽象的想法。",
+    mid:  "你的分數在中間：你對新想法有興趣，同時也重視具體、實際的做法。",
+    low:  "你的分數偏低：你比較偏好具體、實際的事物，對抽象的討論沒那麼感興趣。" },
+];
+
+/* 高／中／低的切點（1–5 分量尺）。這不是常模，只是呈現用的分組。 */
+const CUT_HIGH = 3.5, CUT_LOW = 2.5;
+
+/* ---------------- 題目 ---------------- */
+const itemsEl = document.getElementById("items");
+ITEMS.forEach((it, idx) => {
+  const div = document.createElement("div");
+  div.className = "item";
+  div.id = "item-" + it.id;
+  div.innerHTML = `
+    <div class="q" id="q-${it.id}"><span class="num">${idx + 1}.</span>${it.text}</div>
+    <div class="opts" role="radiogroup" aria-labelledby="q-${it.id}">
+      ${SCALE.map((lab, i) => `
+        <label>
+          <input type="radio" name="q${it.id}" value="${i + 1}">
+          <span class="n">${i + 1}</span><span>${lab}</span>
+        </label>`).join("")}
+    </div>`;
+  itemsEl.appendChild(div);
+});
+
+const form = document.getElementById("quiz");
+function answeredCount() {
+  return ITEMS.filter(it => form.querySelector(`input[name="q${it.id}"]:checked`)).length;
+}
+form.addEventListener("change", (e) => {
+  const n = answeredCount();
+  document.getElementById("progressBar").style.width = (n / ITEMS.length * 100) + "%";
+  document.getElementById("progressText").textContent = `${n} / ${ITEMS.length}`;
+  const item = e.target.closest(".item");
+  if (item) item.classList.remove("missing");
+  if (n === ITEMS.length) document.getElementById("error").textContent = "";
+});
+
+/* ---------------- 計分 ---------------- */
+function score(responses) {
+  const out = {};
+  TRAITS.forEach(t => {
+    const its = ITEMS.filter(i => i.trait === t.code);
+    const vals = its.map(i => i.key === 1 ? responses[i.id] : 6 - responses[i.id]);
+    out[t.code] = vals.reduce((a, b) => a + b, 0) / vals.length;
+  });
+  return out;
+}
+function level(v) { return v >= CUT_HIGH ? "high" : v <= CUT_LOW ? "low" : "mid"; }
+const LEVEL_TEXT = { high: "偏高", mid: "中等", low: "偏低" };
+
+/* ---------------- 蛛網圖（SVG） ----------------
+   drawRadar 接受多組剖面，之後要疊上「目標人物」的剖面時，
+   在 profiles 陣列多加一組即可，例如：
+   { label: "對方", values: {...}, stroke: "#eb6834", fill: "rgba(235,104,52,.15)" } */
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent) {
+  const n = document.createElementNS(NS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(n);
+  return n;
+}
+function drawRadar(svg, profiles) {
+  while (svg.lastChild && svg.lastChild.tagName !== "title") svg.removeChild(svg.lastChild);
+  const cx = 220, cy = 215, R = 150, MIN = 1, MAX = 5;
+  const n = TRAITS.length;
+  const ang = i => -Math.PI / 2 + i * 2 * Math.PI / n;
+  const pt = (i, v) => {
+    const r = R * (v - MIN) / (MAX - MIN);
+    return [cx + r * Math.cos(ang(i)), cy + r * Math.sin(ang(i))];
+  };
+  const css = getComputedStyle(document.documentElement);
+  const grid = css.getPropertyValue("--grid").trim();
+
+  // 格線（2–5 分各一圈；1 分是中心點）
+  for (let v = 2; v <= MAX; v++) {
+    const pts = TRAITS.map((_, i) => pt(i, v).join(",")).join(" ");
+    el("polygon", { points: pts, fill: "none", stroke: grid, "stroke-width": 1 }, svg);
+  }
+  // 軸線
+  TRAITS.forEach((_, i) => {
+    const [x, y] = pt(i, MAX);
+    el("line", { x1: cx, y1: cy, x2: x, y2: y, stroke: grid, "stroke-width": 1 }, svg);
+  });
+
+  // 剖面
+  profiles.forEach(p => {
+    const pts = TRAITS.map((t, i) => pt(i, p.values[t.code]).join(",")).join(" ");
+    el("polygon", { points: pts, fill: p.fill, stroke: p.stroke, "stroke-width": 2,
+                    "stroke-linejoin": "round" }, svg);
+  });
+  // 點與滑鼠提示（畫在多邊形之上）
+  const wrap = document.getElementById("chartWrap");
+  const tip = document.getElementById("tooltip");
+  profiles.forEach(p => {
+    TRAITS.forEach((t, i) => {
+      const [x, y] = pt(i, p.values[t.code]);
+      el("circle", { cx: x, cy: y, r: 5, fill: p.stroke, stroke: css.getPropertyValue("--surface-1").trim(),
+                     "stroke-width": 2 }, svg);
+      const hit = el("circle", { cx: x, cy: y, r: 14, fill: "transparent", style: "cursor:default" }, svg);
+      const show = () => {
+        const box = svg.getBoundingClientRect(), s = box.width / 440;
+        tip.style.left = (x * s) + "px";
+        tip.style.top = (y * s) + "px";
+        tip.textContent = `${p.label}・${t.name}：${p.values[t.code].toFixed(2)}`;
+        tip.style.opacity = 1;
+      };
+      hit.addEventListener("mouseenter", show);
+      hit.addEventListener("touchstart", show, { passive: true });
+      hit.addEventListener("mouseleave", () => tip.style.opacity = 0);
+    });
+  });
+
+  // 刻度數字（畫在最上層，加一圈底色避免被點蓋住）
+  for (let v = 2; v <= MAX; v++) {
+    const [tx, ty] = pt(0, v);
+    const t = el("text", { x: tx - 6, y: ty + 3, "text-anchor": "end", class: "tick" }, svg);
+    t.textContent = v;
+  }
+
+  // 軸標籤（向度名稱＋第一組剖面的分數）
+  TRAITS.forEach((t, i) => {
+    const a = ang(i), lx = cx + (R + 30) * Math.cos(a), ly = cy + (R + 30) * Math.sin(a);
+    const anchor = Math.abs(Math.cos(a)) < 0.2 ? "middle" : (Math.cos(a) > 0 ? "start" : "end");
+    const lines = [t.name];
+    lines.forEach((ln, j) => {
+      const name = el("text", { x: lx, y: ly + j * 15, "text-anchor": anchor, class: "axis-label" }, svg);
+      name.textContent = ln;
+    });
+    const val = el("text", { x: lx, y: ly + 16 + (lines.length - 1) * 15, "text-anchor": anchor, class: "axis-value" }, svg);
+    val.textContent = profiles[0].values[t.code].toFixed(1);
+  });
+}
+
+/* ---------------- 結果 ---------------- */
+let lastScores = null, lastResponses = null;
+function currentProfiles() {
+  const css = getComputedStyle(document.documentElement);
+  return [{ label: "你", values: lastScores,
+            stroke: css.getPropertyValue("--series-1").trim(),
+            fill: css.getPropertyValue("--series-1-fill").trim() }];
+}
+
+function showResults(scores) {
+  lastScores = scores;
+  drawRadar(document.getElementById("radar"), currentProfiles());
+
+  const tbody = document.querySelector("#scoreTable tbody");
+  tbody.innerHTML = TRAITS.map(t =>
+    `<tr><td>${t.name}</td><td class="num">${scores[t.code].toFixed(2)}</td></tr>`).join("");
+
+  document.getElementById("traits").innerHTML = TRAITS.map(t => {
+    const v = scores[t.code], lv = level(v);
+    return `
+      <div class="trait">
+        <div class="trait-head">
+          <span class="trait-name">${t.name}<span class="level">${LEVEL_TEXT[lv]}</span></span>
+          <span class="trait-score">${v.toFixed(1)} / 5</span>
+        </div>
+        <div class="bar"><div style="width:${(v - 1) / 4 * 100}%"></div></div>
+        <p>${t.summary}</p>
+        <p style="margin-top:6px;color:var(--text-primary)">${t[lv]}</p>
+      </div>`;
+  }).join("");
+
+  form.style.display = "none";
+  document.getElementById("intro").style.display = "none";
+  document.getElementById("results").style.display = "block";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+document.getElementById("seeResults").addEventListener("click", () => {
+  const responses = {};
+  let firstMissing = null;
+  ITEMS.forEach(it => {
+    const c = form.querySelector(`input[name="q${it.id}"]:checked`);
+    const div = document.getElementById("item-" + it.id);
+    if (c) { responses[it.id] = Number(c.value); div.classList.remove("missing"); }
+    else { div.classList.add("missing"); if (!firstMissing) firstMissing = div; }
+  });
+  if (firstMissing) {
+    const left = ITEMS.length - answeredCount();
+    document.getElementById("error").textContent = `還有 ${left} 題沒有作答（已用紅字標示）。`;
+    firstMissing.scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  }
+  lastResponses = responses;
+  showResults(score(responses));
+});
+
+document.getElementById("restart").addEventListener("click", () => {
+  form.reset();
+  form.dispatchEvent(new Event("change"));
+  document.getElementById("results").style.display = "none";
+  document.getElementById("sharePanel").style.display = "none";
+  document.getElementById("shareStatus").textContent = "";
+  form.style.display = "block";
+  document.getElementById("intro").style.display = "block";
+  window.scrollTo({ top: 0 });
+});
+
+/* ---------------- 分享 ----------------
+   挑離中點（3 分）最遠的兩個向度，用對應方向的形容詞組成分享文字。 */
+/* 形容詞取自實驗一用的 TIPI 中文版：每組兩個形容詞中挑較中性的一個 */
+const ADJ = {
+  E: { high: "外向",           low: "安靜" },
+  A: { high: "溫暖",           low: "挑剔" },
+  C: { high: "自律",           low: "缺乏條理" },
+  N: { high: "易心煩",         low: "冷靜" },
+  O: { high: "願意接觸新事物", low: "循規蹈矩" },
+};
+function labelLines(text) {
+  // 超過 4 個字的標籤拆成兩行（例如「願意接觸／新事物」）
+  if (text.length <= 4) return [text];
+  return [text.slice(0, 4), text.slice(4)];
+}
+function topTwoAdjectives(scores) {
+  return TRAITS
+    .map((t, i) => ({ code: t.code, d: scores[t.code] - 3, i }))
+    .sort((a, b) => Math.abs(b.d) - Math.abs(a.d) || a.i - b.i)
+    .slice(0, 2)
+    .map(x => ADJ[x.code][x.d >= 0 ? "high" : "low"]);
+}
+function shareUrl() {
+  return location.protocol.startsWith("http") ? location.href.split("#")[0] : "";
+}
+function shareMessage(scores) {
+  const [a, b] = topTwoAdjectives(scores);
+  const url = shareUrl();
+  return `這個測驗讓我更了解自己，原來我是一個${a}、${b}的人！你也來測測看吧${url ? " 👉 " + url : "！"}`;
+}
+
+/* 用 canvas 畫一張 1080×1350 的分享圖（固定淺色，不受深色模式影響） */
+function makeShareImage(scores) {
+  const W = 1080, H = 1350;
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  const ctx = cv.getContext("2d");
+  const FONT = '"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif';
+  const C = { bg: "#f4f3f0", card: "#fcfcfb", grid: "#dcdbd5", ink: "#0b0b0b",
+              ink2: "#52514e", muted: "#7a7973", series: "#2a78d6", fill: "rgba(42,120,214,0.18)" };
+
+  ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = C.card;
+  ctx.beginPath(); ctx.roundRect(60, 60, W - 120, H - 120, 36); ctx.fill();
+
+  ctx.fillStyle = C.ink; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+  ctx.font = `700 60px ${FONT}`; ctx.fillText("我的人格剖面", W / 2, 180);
+
+  // 蛛網圖
+  const cx = W / 2, cy = 620, R = 300, n = TRAITS.length;
+  const ang = i => -Math.PI / 2 + i * 2 * Math.PI / n;
+  const pt = (i, v) => { const r = R * (v - 1) / 4; return [cx + r * Math.cos(ang(i)), cy + r * Math.sin(ang(i))]; };
+  ctx.strokeStyle = C.grid; ctx.lineWidth = 2;
+  for (let v = 2; v <= 5; v++) {
+    ctx.beginPath();
+    TRAITS.forEach((_, i) => { const [x, y] = pt(i, v); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+    ctx.closePath(); ctx.stroke();
+  }
+  TRAITS.forEach((_, i) => { const [x, y] = pt(i, 5); ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(x, y); ctx.stroke(); });
+
+  ctx.beginPath();
+  TRAITS.forEach((t, i) => { const [x, y] = pt(i, scores[t.code]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+  ctx.closePath();
+  ctx.fillStyle = C.fill; ctx.fill();
+  ctx.strokeStyle = C.series; ctx.lineWidth = 5; ctx.lineJoin = "round"; ctx.stroke();
+  TRAITS.forEach((t, i) => {
+    const [x, y] = pt(i, scores[t.code]);
+    ctx.beginPath(); ctx.arc(x, y, 11, 0, Math.PI * 2);
+    ctx.fillStyle = C.series; ctx.fill(); ctx.lineWidth = 4; ctx.strokeStyle = C.card; ctx.stroke();
+  });
+
+  TRAITS.forEach((t, i) => {
+    const a = ang(i), lx = cx + (R + 60) * Math.cos(a), ly = cy + (R + 60) * Math.sin(a);
+    ctx.textAlign = Math.abs(Math.cos(a)) < 0.2 ? "center" : (Math.cos(a) > 0 ? "left" : "right");
+    const lines = [t.name];
+    ctx.fillStyle = C.ink; ctx.font = `700 38px ${FONT}`;
+    lines.forEach((ln, j) => ctx.fillText(ln, lx, ly + j * 44));
+    ctx.fillStyle = C.ink2; ctx.font = `400 32px ${FONT}`;
+    ctx.fillText(scores[t.code].toFixed(1), lx, ly + 42 + (lines.length - 1) * 44);
+  });
+
+  // 文字
+  const [a, b] = topTwoAdjectives(scores);
+  ctx.textAlign = "center"; ctx.fillStyle = C.ink2; ctx.font = `400 40px ${FONT}`;
+  ctx.fillText("原來我是一個", W / 2, 1080);
+  ctx.fillStyle = C.series; ctx.font = `700 64px ${FONT}`;
+  ctx.fillText(`${a}、${b}`, W / 2, 1160);
+  ctx.fillStyle = C.ink2; ctx.font = `400 40px ${FONT}`;
+  ctx.fillText("的人！你也來測測看吧", W / 2, 1220);
+  return cv;
+}
+
+let shareBlob = null, shareDataUrl = null;
+function downloadImage() {
+  const a = document.createElement("a");
+  a.href = shareDataUrl; a.download = "我的人格剖面.png";
+  document.body.appendChild(a); a.click(); a.remove();
+}
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; }
+  catch { return false; }
+}
+
+document.getElementById("shareBtn").addEventListener("click", async () => {
+  const status = document.getElementById("shareStatus");
+  const msg = shareMessage(lastScores);
+  const cv = makeShareImage(lastScores);
+  shareDataUrl = cv.toDataURL("image/png");
+  shareBlob = await new Promise(r => cv.toBlob(r, "image/png"));
+
+  document.getElementById("shareImg").src = shareDataUrl;
+  document.getElementById("shareText").textContent = msg;
+  document.getElementById("sharePanel").style.display = "block";
+
+  // 手機：系統分享選單（可直接分享到 IG、LINE 等）；不支援時改成下載圖片＋複製文字
+  const file = new File([shareBlob], "我的人格剖面.png", { type: "image/png" });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], text: msg });
+      status.textContent = "已開啟分享。";
+      return;
+    } catch (e) {
+      if (e.name === "AbortError") { status.textContent = "已取消分享。圖片和文字都在上面，可以手動儲存。"; return; }
+    }
+  }
+  downloadImage();
+  const ok = await copyText(msg);
+  status.textContent = ok ? "圖片已下載，分享文字已複製，可以直接貼上。" : "圖片已下載。文字請按「複製文字」或手動選取。";
+});
+document.getElementById("copyBtn").addEventListener("click", async () => {
+  const ok = await copyText(document.getElementById("shareText").textContent);
+  document.getElementById("shareStatus").textContent = ok ? "已複製文字。" : "無法自動複製，請手動選取文字。";
+});
+document.getElementById("downloadBtn").addEventListener("click", downloadImage);
+
+/* ---------------- 目標人物剖面（相似／不相似） ----------------
+   相似組：每個向度以「受試者分數 ± offsetSimilar」為平均（方向隨機，超出 1–5 就換另一邊）
+   不相似組：每個向度往離受試者較遠的一端移動 offsetDissimilar 當平均，超出範圍就截在 1 或 5
+   兩組都從 N(平均, sd) 抽樣，再四捨五入到 step（Mini-IPIP 是 4 題平均，所以 0.25 一格）並截在 1–5。 */
+const TARGET_OPTS = { offsetSimilar: 0.5, offsetDissimilar: 1.5, sd: 0.3, step: 0.25 };
+
+function makeRng(seed) {                 // 給 seed 就可重現；不給就用 Math.random
+  if (seed === undefined) return Math.random;
+  let a = seed >>> 0;
+  return function () {                   // mulberry32
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function normal(rng, mu, sd) {           // Box–Muller
+  const u = 1 - rng(), v = rng();
+  return mu + sd * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
+
+function makeTargetProfile(self, condition, opts = {}, seed) {
+  const o = { ...TARGET_OPTS, ...opts };
+  const rng = makeRng(seed);
+  const target = {}, means = {};
+  TRAITS.forEach(t => {
+    const x = self[t.code];
+    let mu;
+    if (condition === "similar") {
+      let sign = rng() < 0.5 ? -1 : 1;
+      mu = x + sign * o.offsetSimilar;
+      if (mu < 1 || mu > 5) mu = x - sign * o.offsetSimilar;
+    } else {
+      const sign = x >= 3 ? -1 : 1;
+      mu = clamp(x + sign * o.offsetDissimilar, 1, 5);
+    }
+    means[t.code] = mu;
+    const v = Math.round(normal(rng, mu, o.sd) / o.step) * o.step;
+    target[t.code] = clamp(v, 1, 5);
+  });
+  return { values: target, means, condition, opts: o, seed };
+}
+
+/* ---------------- 版本 2：只操弄受試者最極端的兩個向度 ----------------
+   1. 找出受試者離 3 分最遠的兩個向度（同分時依 TRAITS 順序）
+   2. 相似組：這兩個向度 = 受試者分數 + N(0, matchSd)
+      不相似組：這兩個向度放到另一端，從 N(extremeLow 或 extremeHigh, extremeSd) 抽
+   3. 其他三個向度（otherMode = "anchored"，預設）：
+        相似組：受試者分數 + N(0, otherSd)
+        不相似組：往離受試者較遠的一端移 otherOffset（1.5，超出 1–5 就截）+ N(0, otherSd)
+      （otherMode = "random" 則兩組都從 N(3, otherSd) 抽）
+      相似組另外隨機挑 similarFlip 個（預設 1 個）非極端向度，改用不相似組的方式產生，
+      讓相似組不要「太像」而引起懷疑（被挑到的向度記在 flipped）。
+      兩組都限制這三個向度離 3 分的距離小於操弄的兩個向度（再減 margin），
+      確保分享圖的兩個形容詞來自操弄的向度；抽不到就往 3 分方向收到界線上。 */
+const EXTREME_OPTS = { matchSd: 0.25, extremeLow: 1.5, extremeHigh: 4.5, extremeSd: 0.3,
+                       otherMode: "anchored", otherOffset: 1.5, otherSd: 0.3, similarFlip: 1,
+                       dissimilarOtherOffset: 1.5,      // 不相似組其他三個向度往遠的一端移的分數
+                       dissimilarMirror: false,         // true：改成「移動」和「對 3 分鏡像」取差距大的
+                       constrainDissimilar: true,       // 不相似組其他向度也不能比關鍵向度更極端
+                       margin: 0.25, step: 0.25, maxTries: 200 };
+
+function makeTargetProfileExtreme(self, condition, opts = {}, seed) {
+  const o = { ...EXTREME_OPTS, ...opts };
+  const rng = makeRng(seed);
+  const snap = v => clamp(Math.round(v / o.step) * o.step, 1, 5);
+  const ranked = TRAITS.map((t, i) => ({ code: t.code, d: self[t.code] - 3, i }))
+    .sort((a, b) => Math.abs(b.d) - Math.abs(a.d) || a.i - b.i);
+  const key = ranked.slice(0, 2).map(x => x.code);
+
+  const target = {};
+  key.forEach(c => {
+    const x = self[c];
+    if (condition === "similar") {
+      target[c] = snap(normal(rng, x, o.matchSd));
+    } else {
+      target[c] = snap(normal(rng, x >= 3 ? o.extremeLow : o.extremeHigh, o.extremeSd));
+    }
+  });
+  // 其他向度：要比操弄的兩個向度溫和
+  const minKeyDist = Math.min(...key.map(c => Math.abs(target[c] - 3)));
+  const limit = Math.max(0, minKeyDist - o.margin);
+  const floorStep = x => Math.floor(x / o.step + 1e-9) * o.step;
+  const others = TRAITS.filter(t => !key.includes(t.code)).map(t => t.code);
+  // 相似組：隨機挑 similarFlip 個非極端向度改用不相似組的方式產生
+  const pool = [...others], flipped = [];
+  if (condition === "similar") {
+    for (let k = 0; k < Math.min(o.similarFlip, pool.length); k++) {
+      flipped.push(pool.splice(Math.floor(rng() * pool.length), 1)[0]);
+    }
+  }
+  others.forEach(c => {
+    const t = { code: c };
+    const x = self[t.code];
+    const dissimilarStyle = condition !== "similar" || flipped.includes(c);
+    let mu;
+    if (o.otherMode === "random") mu = 3;
+    else if (!dissimilarStyle) mu = x;
+    else if (condition === "similar") mu = clamp(x + (x >= 3 ? -1 : 1) * o.otherOffset, 1, 5);
+    else {
+      const shifted = clamp(x + (x >= 3 ? -1 : 1) * o.dissimilarOtherOffset, 1, 5);
+      const mirrored = 6 - x;
+      mu = (o.dissimilarMirror && Math.abs(mirrored - x) > Math.abs(shifted - x)) ? mirrored : shifted;
+    }
+    const constrained = condition === "similar" || o.constrainDissimilar;
+    let v, tries = 0;
+    do { v = snap(normal(rng, mu, o.otherSd)); tries++; }
+    while (constrained && Math.abs(v - 3) > limit && tries < o.maxTries);
+    if (constrained && Math.abs(v - 3) > limit) v = 3 + Math.sign(v - 3) * floorStep(limit);  // 收到界線上
+    target[t.code] = v;
+  });
+  return { values: target, keyTraits: key, flipped, condition, opts: o, seed };
+}
+
+/* ---------------- 版本 3：三位目標輪替角色，彼此不同但維持高／低相似 ----------------
+   key = 受試者離 3 分最遠的兩個向度；others = 其餘三個（依 TRAITS 順序）
+   第 k 位目標（k = 0, 1, 2）：
+     anchor = key[k % 2]，second = key[(k + 1) % 2]，odd = others[k]（三位各不同），rest = 其餘兩個
+   相似組：anchor 非常像（+N(0, anchorSd)）；second、rest 像（+N(0, sd)）；odd 往遠端移 offset
+   不相似組：anchor 放到另一端（N(1.5 或 4.5, extremeSd)）；second、rest 往遠端移 offset；odd 像（+N(0, sd)） */
+const V3_OPTS = { anchorSd: 0.15, sd: 0.3, offset: 1.5, extremeLow: 1.5, extremeHigh: 4.5, extremeSd: 0.3, step: 0.25 };
+
+function makeTargetProfileV3(self, condition, k, opts = {}, seed) {
+  const o = { ...V3_OPTS, ...opts };
+  const rng = makeRng(seed);
+  const snap = v => clamp(Math.round(v / o.step) * o.step, 1, 5);
+  const ranked = TRAITS.map((t, i) => ({ code: t.code, d: self[t.code] - 3, i }))
+    .sort((a, b) => Math.abs(b.d) - Math.abs(a.d) || a.i - b.i);
+  const key = ranked.slice(0, 2).map(x => x.code);
+  const others = TRAITS.map(t => t.code).filter(c => !key.includes(c));
+  const anchor = key[k % 2], second = key[(k + 1) % 2], odd = others[k % others.length];
+  const away = x => clamp(x + (x >= 3 ? -1 : 1) * o.offset, 1, 5);
+  const like = x => normal(rng, x, o.sd);
+  const unlike = x => normal(rng, away(x), o.sd);
+
+  const v = {}, roles = {};
+  TRAITS.forEach(t => {
+    const c = t.code, x = self[c];
+    let role;
+    if (c === anchor) role = "anchor";
+    else if (c === second) role = "second";
+    else if (c === odd) role = "odd";
+    else role = "rest";
+    roles[c] = role;
+    if (condition === "similar") {
+      if (role === "anchor") v[c] = normal(rng, x, o.anchorSd);
+      else if (role === "odd") v[c] = unlike(x);
+      else v[c] = like(x);
+    } else {
+      if (role === "anchor") v[c] = normal(rng, x >= 3 ? o.extremeLow : o.extremeHigh, o.extremeSd);
+      else if (role === "odd") v[c] = like(x);
+      else v[c] = unlike(x);
+    }
+    v[c] = snap(v[c]);
+  });
+  return { values: v, keyTraits: key, roles, k, condition, opts: o, seed };
+}
+
+/* 相似程度指標（可存下來當操弄檢核用）：平均絕對差、歐氏距離、剖面相關 */
+function profileDistance(a, b) {
+  const xs = TRAITS.map(t => a[t.code]), ys = TRAITS.map(t => b[t.code]);
+  const n = xs.length;
+  const mad = xs.reduce((s, x, i) => s + Math.abs(x - ys[i]), 0) / n;
+  const euc = Math.sqrt(xs.reduce((s, x, i) => s + (x - ys[i]) ** 2, 0));
+  const mx = xs.reduce((s, x) => s + x, 0) / n, my = ys.reduce((s, y) => s + y, 0) / n;
+  const cov = xs.reduce((s, x, i) => s + (x - mx) * (ys[i] - my), 0);
+  const sx = Math.sqrt(xs.reduce((s, x) => s + (x - mx) ** 2, 0));
+  const sy = Math.sqrt(ys.reduce((s, y) => s + (y - my) ** 2, 0));
+  const r = (sx && sy) ? cov / (sx * sy) : NaN;
+  return { mad, euc, r };
+}
+
+
+/* ================= 社群情境（3 個 trial，動機為組內變項） =================
+   每個 trial：一則違規貼文（首頁單篇）＋發文者個人頁（置頂人格測驗分享＋4 則填充貼文）
+   profileFirst：個人頁 → 貼文 → 評分
+   behaviorFirst：貼文 → 點帳號進個人頁 → 評分 */
+const ICON = {
+  person: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4.2"/><path d="M3.5 21c0-4.6 3.8-7.5 8.5-7.5s8.5 2.9 8.5 7.5z"/></svg>',
+  heart:  '<svg viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z"/></svg>',
+  reply:  '<svg viewBox="0 0 24 24"><path d="M20.5 11.6a8.5 8.5 0 1 1-3.4-6.8 8.4 8.4 0 0 1 3.4 6.8z"/><path d="M20.5 20.5l-2.6-2.6"/></svg>',
+  repost: '<svg viewBox="0 0 24 24"><path d="M17 3.5l3 3-3 3"/><path d="M4 11v-1.5a3 3 0 0 1 3-3h13"/><path d="M7 20.5l-3-3 3-3"/><path d="M20 13v1.5a3 3 0 0 1-3 3H4"/></svg>',
+  send:   '<svg viewBox="0 0 24 24"><path d="M21 3.5L10.5 13.5"/><path d="M21 3.5l-6.8 17-3.7-7-7-3.7z"/></svg>',
+};
+
+/* 違規貼文：3 個行為情境 × 3 種動機 */
+const SCENARIOS = {
+  umbrella: {
+    negligence: "離開圖書館的時候一時眼ㄆ一ㄚˇ\n到車站半天了才發現拿到的傘不是我的傘.......",
+    selfish:    "雨真的太大，忘記帶傘就拿了圖書館外面的傘\n那麼多把，拿一把擋一下應該還好吧…",
+    malicious:  "討厭的同學來念書把傘放在圖書館外面\n被我拿去放在愛心傘了，呵呵，你就找吧",
+  },
+  report: {
+    negligence: "在填互評表單的時候好像不小心按成零分了\n天啊",
+    selfish:    "怎麼會有老師的組內評分標準是根據得分順序來給分的...\n只好給貢獻度最高的組員0分了以免影響到我的成績",
+    malicious:  "某組員雖然很認真但發言根本白癡\n整天讓我懷疑高等教育到底發生了什麼事，互評全部打零分了應該不算過分吧",
+  },
+  work: {
+    negligence: "忘記告訴請假同事老闆叫他今天要交檔案了\n現在同事正在被老闆罵 天啊",
+    selfish:    "大家如果和請假的同事競爭轉正還會告訴他該完成的工作嗎\n沒告訴請假同事老闆叫他今天交檔案\n現在同事正在被老闆罵",
+    malicious:  "真的跟請假同事處不來乾脆就沒告訴請假同事老闆叫他今天交檔案\n現在同事正在被老闆罵\n誰叫你實習還敢請假有點舒心...",
+  },
+};
+const SCENARIO_LABEL = { umbrella: "雨傘", report: "組內互評", work: "工作" };
+const MOTIVE_LABEL = { negligence: "過失", selfish: "自私獲益", malicious: "惡意傷人" };
+
+/* 拉丁方格：每個受試者看到 3 個情境，各配一種動機 */
+const LATIN = [
+  { umbrella: "negligence", report: "selfish",    work: "malicious"  },
+  { umbrella: "selfish",    report: "malicious",  work: "negligence" },
+  { umbrella: "malicious",  report: "negligence", work: "selfish"    },
+];
+
+/* 3 位目標人物（每個 trial 一位），帳號名稱固定、對應到 trial 的出場順序 */
+/* 帳號依受試者性別配對（沿用實驗二：男生看男生、女生看女生），用英文名讓性別線索清楚。
+   x：其他／不願透露／沒有傳入性別時，用看不出性別的帳號。三個帳號依 trial 位置固定。 */
+const HANDLE_SETS = {
+  m: ["kevin_0412", "jason.lin", "eric_hsu23"],
+  f: ["amy_0412", "vivian.lin", "emily_hsu23"],
+  x: ["rainyday_0412", "midnight.noodle", "sleepy_hsu23"],
+};
+function normGender(g) { return g === "m" || g === "f" ? g : "x"; }
+
+/* 填充貼文：盡量不透露性格。每個 trial 用 6 則不重複的：個人頁 2 則、貼文頁 4 則 */
+const FILLERS = [
+  "今天捷運好擠，差點坐過站",
+  "超商新出的布丁還不錯吃",
+  "晚餐吃什麼永遠是今天最難的決定",
+  "週末終於把房間壞掉的燈泡換掉了",
+  "有人知道手機殼哪裡買比較便宜嗎",
+  "公車等了二十分鐘終於來了",
+  "今天的天空好藍",
+  "手機又該換電池了吧",
+  "早餐店阿姨今天多給我一顆蛋",
+  "冷氣遙控器又找不到了",
+  "下禮拜好像會變冷",
+  "便利商店的關東煮開始賣了",
+  "洗衣機洗到一半跳電",
+  "最近好想喝珍奶",
+  "鬧鐘響了三次才起床",
+  "今天的課直接停課 賺到半天",
+  "有沒有人推薦好看的劇 最近劇荒",
+  "剛剛在路上看到一隻超胖的橘貓",
+  "咖啡喝太多心跳好快",
+  "終於把衣櫃整理完了",
+];
+
+
+const shuffle = (arr, rng = Math.random) => {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+};
+function fmtDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+const PIN = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6l-1 6 4 4H6l4-4z"/><path d="M12 13v8"/></svg>';
+function postHtml(p, handle, opts = {}) {
+  const cls = opts.clickable ? " clickable" : "";
+  return `
+    <article class="post${opts.highlight ? " highlight" : ""}" data-kind="${p.kind}">
+      <div class="avatar${cls}" data-profile-link>${ICON.person}</div>
+      <div>
+        ${p.pinned ? `<div class="pinned">${PIN}置頂</div>` : ""}
+        <div class="post-head"><span class="post-user${cls}" data-profile-link>${handle}</span><span class="post-time">${p.date}</span></div>
+        <div class="post-translate">翻譯</div>
+        <div class="post-body">${p.html}</div>
+        ${p.kind === "share" ? `<div class="img-slot"></div>` : ""}
+        <div class="post-actions">
+          <span>${ICON.heart}</span><span>${ICON.reply}</span><span>${ICON.repost}</span><span>${ICON.send}</span>
+        </div>
+      </div>
+    </article>`;
+}
+
+/* ---------- 分派（網址參數可指定：?cond= &order= &list=） ---------- */
+const params = new URLSearchParams(location.search);
+function pickCondition() {
+  const q = params.get("cond");
+  if (q === "similar" || q === "dissimilar") return q;
+  return Math.random() < 0.5 ? "similar" : "dissimilar";
+}
+function pickOrder() {
+  const q = params.get("order");
+  if (q === "profileFirst" || q === "behaviorFirst") return q;
+  return Math.random() < 0.5 ? "profileFirst" : "behaviorFirst";
+}
+function pickList() {
+  const q = Number(params.get("list"));
+  if ([1, 2, 3].includes(q)) return q;
+  return 1 + Math.floor(Math.random() * 3);
+}
+
+/* ---------- session ---------- */
+let session = null, trialIdx = 0, stepIdx = 0, stepStart = 0;
+function startSession(selfScores, condition, order, list, opts = {}) {
+  // opts.seed：固定填充貼文的分配與目標剖面（嵌入 Qualtrics 時，三個 trial 分開載入也會一致）
+  // opts.scenarioOrder：情境出場順序（例如 ["work", "umbrella", "report"]）
+  const seed = opts.seed !== undefined ? opts.seed : Math.floor(Math.random() * 1e9);
+  const gender = normGender(opts.gender !== undefined ? opts.gender : params.get("g"));
+  const rng = makeRng(seed);
+  const fillerPool = shuffle(FILLERS, rng);
+  const scenarioOrder = opts.scenarioOrder || shuffle(Object.keys(SCENARIOS), rng);
+  const trials = scenarioOrder.map((sc, i) => {
+    const motive = LATIN[list - 1][sc];
+    const prof = makeTargetProfileV3(selfScores, condition, i, {}, seed + 7919 * (i + 1));
+    return { trial: i + 1, handle: HANDLE_SETS[gender][i], scenario: sc, motive,
+             fillers: fillerPool.slice(i * 6, i * 6 + 2),
+             postFillers: fillerPool.slice(i * 6 + 2, i * 6 + 6),
+             target: prof, distance: profileDistance(selfScores, prof.values),
+             targetAdjectives: topTwoAdjectives(prof.values), timing: {} };
+  });
+  const selfItems = opts.selfItems || lastResponses || null;   // 受試者 20 題原始作答（用來標記灰框）
+  session = { condition, order, list, seed, scenarioOrder, self: selfScores, selfItems, trials, startedAt: new Date().toISOString() };
+  trialIdx = 0;
+}
+const STEPS = { profileFirst: ["profile", "ps", "post", "rating"], behaviorFirst: ["post", "profile", "ps", "rating"] };
+
+function prepareTrial(t) {
+  // 日期由新到舊：貼文頁的 5 則（違規貼文在第 3 則）→ 個人頁的置頂分享與 2 則廢文
+  let d = new Date();
+  const step = () => { d = new Date(d.getTime() - (1 + Math.floor(Math.random() * 2)) * 86400000); return fmtDate(d); };
+  const pf = t.postFillers.map(x => ({ kind: "filler", html: x }));
+  const transgression = { kind: "transgression", html: SCENARIOS[t.scenario][t.motive] };
+  t._postPage = [pf[0], pf[1], transgression, pf[2], pf[3]];
+  t._postPage.forEach(p => p.date = step());
+  t._post = transgression;
+  const share = { kind: "share", pinned: true,
+    html: `做了一個人格測驗，原來我是一個${t.targetAdjectives[0]}、${t.targetAdjectives[1]}的人！\n你們也來測測看吧～` };
+  const fillers = t.fillers.map(x => ({ kind: "filler", html: x }));
+  share.date = step();
+  fillers.forEach(p => p.date = step());
+  t._share = share; t._fillers = fillers;
+  t.transgressionPos = 2;
+}
+
+function renderProfile(t) {
+  document.getElementById("feedHandle").textContent = t.handle;
+  document.getElementById("feedMeta").textContent = `${1 + t._fillers.length + t._postPage.length} 則串文`;
+  document.getElementById("feedAvatarBig").innerHTML = ICON.person;
+  document.getElementById("feedPosts").innerHTML =
+    [t._share, ...t._fillers].map(p => postHtml(p, t.handle)).join("");
+  const cv = makeShareImage(t.target.values);
+  cv.className = "post-img"; cv.setAttribute("role", "img"); cv.setAttribute("aria-label", "人格測驗結果分享圖");
+  document.querySelector('#feedPosts .post[data-kind="share"] .img-slot').appendChild(cv);
+  const first = session.order === "profileFirst";
+  document.getElementById("profileNote").textContent = first
+    ? `（第 ${t.trial} / ${session.trials.length} 位）下面是一位使用者的個人頁面。請像平常滑社群一樣，看完他的貼文。`
+    : `這是 ${t.handle} 的個人頁面。請看完他的貼文。`;
+}
+
+function renderPost(t) {
+  const first = session.order === "behaviorFirst";
+  document.getElementById("postHead").textContent = `${t.handle} 的串文`;
+  document.getElementById("postSlot").innerHTML =
+    t._postPage.map(p => postHtml(p, t.handle, { clickable: first })).join("");
+  document.getElementById("postNote").textContent = first
+    ? `（第 ${t.trial} / ${session.trials.length} 位）下面是 ${t.handle} 在社群平台上發的幾則貼文，請像平常一樣看完。看完後，請點擊他的帳號名稱或頭像，查看他的個人頁面。`
+    : `請繼續看 ${t.handle} 的個人頁面所發的其他貼文，請像平常一樣看完。`;
+  document.getElementById("postNext").style.display = first ? "none" : "block";
+  if (first) {
+    document.querySelectorAll("#postSlot [data-profile-link]").forEach(el =>
+      el.addEventListener("click", () => { t.clickedProfile = true; nextStep(); }, { once: true }));
+  }
+}
+
+function renderRating(t) {
+  document.getElementById("ratingPost").innerHTML = postHtml(t._post, t.handle);
+  document.querySelectorAll('input[name="appropriate"]').forEach(x => x.checked = false);
+  document.getElementById("ratingError").textContent = "";
+}
+
+function show(id) {
+  ["intro", "quiz", "results", "postView", "profileView", "psView", "rating", "done"].forEach(x => {
+    const n = document.getElementById(x); if (n) n.style.display = x === id ? "block" : "none";
+  });
+  window.scrollTo({ top: 0 });
+}
+
+function runStep() {
+  const t = session.trials[trialIdx];
+  const step = STEPS[session.order][stepIdx];
+  stepStart = performance.now();
+  if (step === "profile") { renderProfile(t); show("profileView"); }
+  else if (step === "post") { renderPost(t); show("postView"); }
+  else if (step === "ps") { renderPS(t); show("psView"); }
+  else { renderRating(t); show("rating"); }
+}
+function nextStep() {
+  const t = session.trials[trialIdx];
+  const step = STEPS[session.order][stepIdx];
+  t.timing[step + "Ms"] = Math.round(performance.now() - stepStart);   // 停留時間
+  stepIdx++;
+  if (stepIdx < STEPS[session.order].length) return runStep();
+  // 這個 trial 結束
+  if (MODE === "trial") return finishTrialMode(t);
+  delete t._share; delete t._fillers; delete t._post; delete t._postPage;
+  trialIdx++; stepIdx = 0;
+  if (trialIdx < session.trials.length) { prepareTrial(session.trials[trialIdx]); return runStep(); }
+  session.finishedAt = new Date().toISOString();
+  document.getElementById("dataDump").textContent = JSON.stringify(session, null, 2);
+  show("done");
+}
+
+function beginTrials(selfScores, condition, order, list) {
+  startSession(selfScores, condition, order, list);
+  stepIdx = 0;
+  prepareTrial(session.trials[0]);
+  runStep();
+}
+
+
+/* ---------- 知覺相似（看完個人頁後、道德判斷前） ---------- */
+document.getElementById("psScale").innerHTML = Array.from({ length: 10 }, (_, i) => i + 1).map(v =>
+  `<label><input type="radio" name="ps" value="${v}"><span class="n">${v}</span></label>`).join("");
+
+/* ---------- 對目標人物作答的 Mini-IPIP 題（每個向度一題） ----------
+   選題依據：Donnellan, Oswald, Baird, & Lucas (2006, Psychological Assessment, 18, 192–203)
+   Table 3（Study 3 的驗證性因素分析，N = 296）中，各向度標準化負荷量最高的題目：
+     E：6「話不多」(R) .76　A：2「同理別人的感受」.76　C：8「忘記把東西放回原位」(R) .67
+     N：4「情緒起伏不定」.80　O：20「想像力不太好」(R) .72
+   同分：C 的 8 和 18（.67）、N 的 4 和 14（.80）。要換題只要改下面的編號。
+   作答存原始分數（1–5，未反向計分）；跟受試者自己的 ipip_ 原始分數直接可比。 */
+const TARGET_ITEMS = { E: 6, A: 2, C: 8, N: 4, O: 20 };
+const THIRD_PERSON = {
+  1: "這個人是聚會中的靈魂人物。", 2: "這個人會同理別人的感受。", 3: "這個人會馬上把雜事做完。",
+  4: "這個人的情緒常常起伏不定。", 5: "這個人的想像力很豐富。", 6: "這個人話不多。",
+  7: "這個人對別人的問題不感興趣。", 8: "這個人常常忘記把東西放回原位。", 9: "這個人大部分時候都很放鬆。",
+  10: "這個人對抽象的想法不感興趣。", 11: "在聚會中，這個人會跟許多不同的人聊天。", 12: "這個人能感受到別人的情緒。",
+  13: "這個人喜歡井然有序。", 14: "這個人很容易心煩意亂。", 15: "這個人很難理解抽象的想法。",
+  16: "在團體中，這個人習慣低調、不引人注意。", 17: "這個人對別人沒什麼興趣。", 18: "這個人會把事情搞得一團亂。",
+  19: "這個人很少感到憂鬱。", 20: "這個人的想像力不太好。",
+};
+document.getElementById("targetItems").innerHTML = TRAITS.map(t => {
+  const id = TARGET_ITEMS[t.code];
+  return `
+  <div class="item" id="ti-${t.code}">
+    <div class="q" id="tiq-${t.code}">${THIRD_PERSON[id]}</div>
+    <div class="opts" role="radiogroup" aria-labelledby="tiq-${t.code}">
+      ${SCALE.map((lab, i) => `
+        <label data-v="${i + 1}">
+          <input type="radio" name="ti_${t.code}" value="${i + 1}">
+          <span class="n">${i + 1}</span><span>${lab}</span><span class="selftag"></span>
+        </label>`).join("")}
+    </div>
+  </div>`;
+}).join("");
+
+function markSelfAnswers() {
+  const own = session && session.selfItems;
+  document.getElementById("selfMarkNote").style.display = own ? "" : "none";
+  TRAITS.forEach(t => {
+    const v = own ? own[TARGET_ITEMS[t.code]] : null;
+    document.querySelectorAll(`#ti-${t.code} label`).forEach(l => {
+      const mine = Number(l.dataset.v) === v;
+      l.classList.toggle("self", mine);
+      l.querySelector(".selftag").textContent = mine ? "你的答案" : "";
+    });
+  });
+}
+
+function renderPS(t) {
+  document.getElementById("psHandle").textContent = `使用者：${t.handle}`;
+  document.querySelectorAll('#psView input').forEach(x => x.checked = false);
+  document.querySelectorAll('#psView .item').forEach(x => x.classList.remove("missing"));
+  document.getElementById("psError").textContent = "";
+  markSelfAnswers();
+}
+document.getElementById("psNext").addEventListener("click", () => {
+  const t = session.trials[trialIdx];
+  const ps = document.querySelector('input[name="ps"]:checked');
+  let missing = 0;
+  const items = {};
+  TRAITS.forEach(x => {
+    const c = document.querySelector(`input[name="ti_${x.code}"]:checked`);
+    document.getElementById("ti-" + x.code).classList.toggle("missing", !c);
+    if (c) items[x.code] = Number(c.value); else missing++;
+  });
+  if (!ps || missing) {
+    document.getElementById("psError").textContent = "還有題目沒有作答。";
+    return;
+  }
+  t.perceivedSimilarity = Number(ps.value);
+  t.targetItemRatings = items;
+  nextStep();
+});
+
+document.getElementById("toFeed").addEventListener("click", () =>
+  beginTrials(lastScores, pickCondition(), pickOrder(), pickList()));
+document.getElementById("profileNext").addEventListener("click", nextStep);
+document.getElementById("postNext").addEventListener("click", nextStep);
+
+document.getElementById("appropriate").innerHTML = [1,2,3,4,5,6,7].map(v =>
+  `<label><input type="radio" name="appropriate" value="${v}"><span class="n">${v}</span></label>`).join("");
+
+document.getElementById("submitRating").addEventListener("click", () => {
+  const c = document.querySelector('input[name="appropriate"]:checked');
+  if (!c) { document.getElementById("ratingError").textContent = "請先選擇一個分數。"; return; }
+  session.trials[trialIdx].appropriateness = Number(c.value);
+  nextStep();
+});
+
+/* ================= 嵌入 Qualtrics 的模式 =================
+   ?mode=quiz  ：只做 Mini-IPIP 與結果頁，按「繼續」把分數傳回 Qualtrics
+   ?mode=trial ：只跑一位目標人物（個人頁、貼文頁、相似性題目，不含評分），結束後把資料傳回 Qualtrics
+     需要的參數：t（1–3）、cond、order、list、so（情境順序，逗號分隔）、seed、E、A、C、N、O、
+                 ip（受試者 20 題原始作答，依題號逗號分隔）、g（性別 m / f，其他值用中性帳號）
+   其他（沒有 mode）：完整的展示流程 */
+const MODE = params.get("mode");
+const PARENT_ORIGIN = params.get("parent") || "*";
+function sendToParent(msg) {
+  if (window.parent && window.parent !== window) window.parent.postMessage(msg, PARENT_ORIGIN);
+}
+function reportHeight() {
+  const main = document.querySelector("main");
+  const h = main ? main.getBoundingClientRect().bottom + window.scrollY : document.body.scrollHeight;
+  sendToParent({ type: "exp3:height", h: Math.ceil(h) + 24 });
+}
+if (MODE) {
+  if ("ResizeObserver" in window) new ResizeObserver(reportHeight).observe(document.body);
+  window.addEventListener("load", reportHeight);
+  const _show = show;
+  show = function (id) { _show(id); setTimeout(reportHeight, 50); };
+}
+function r2(x) { return Math.round(x * 100) / 100; }
+function showFinished(text) {
+  document.getElementById("done").innerHTML =
+    `<div class="card" style="max-width:640px;margin:0 auto;"><h2>${text}</h2>
+     <p class="muted">請按問卷下方的「下一頁」（→）繼續。</p></div>`;
+  ["intro", "quiz", "results", "postView", "profileView", "psView", "rating"].forEach(x => {
+    const n = document.getElementById(x); if (n) n.style.display = "none"; });
+  document.getElementById("done").style.display = "block";
+  reportHeight();
+}
+
+if (MODE === "quiz") {
+  document.getElementById("restart").style.display = "none";
+  document.getElementById("toFeed").textContent = "完成";
+  document.getElementById("toFeed").addEventListener("click", (e) => {
+    e.stopImmediatePropagation();
+    const fields = { seed: String(Math.floor(Math.random() * 1e9)),
+                     scen_order: shuffle(Object.keys(SCENARIOS)).join(",") };
+    TRAITS.forEach(t => fields["self_" + t.code] = r2(lastScores[t.code]));
+    ITEMS.forEach(it => fields["ipip_" + it.id] = lastResponses[it.id]);
+    sendToParent({ type: "exp3:quiz", fields });
+    showFinished("人格測驗完成了！");
+  }, true);
+}
+
+if (MODE === "trial") {
+  const tIdx = Number(params.get("t")) - 1;
+  const self = {}; TRAITS.forEach(t => self[t.code] = Number(params.get(t.code)));
+  const cond = params.get("cond"), order = params.get("order"), list = Number(params.get("list"));
+  const so = (params.get("so") || "").split(",").filter(x => x in SCENARIOS);
+  const seed = Number(params.get("seed"));
+  const ipRaw = (params.get("ip") || "").split(",").map(Number);
+  const selfItems = {}; ITEMS.forEach((it, i) => selfItems[it.id] = ipRaw[i]);
+  const problems = [];
+  if (!(tIdx >= 0 && tIdx <= 2)) problems.push("t");
+  if (TRAITS.some(t => !(self[t.code] >= 1 && self[t.code] <= 5))) problems.push("E/A/C/N/O");
+  if (!["similar", "dissimilar"].includes(cond)) problems.push("cond");
+  if (!["profileFirst", "behaviorFirst"].includes(order)) problems.push("order");
+  if (![1, 2, 3].includes(list)) problems.push("list");
+  if (so.length !== 3) problems.push("so");
+  if (!Number.isFinite(seed)) problems.push("seed");
+  if (ipRaw.length !== 20 || ipRaw.some(v => !(v >= 1 && v <= 5 && Number.isInteger(v)))) problems.push("ip");
+  if (problems.length) {
+    document.body.innerHTML = `<main><div class="card"><h2>參數錯誤</h2><p>缺少或不正確：${problems.join("、")}</p></div></main>`;
+    sendToParent({ type: "exp3:error", problems });
+  } else {
+    STEPS.profileFirst = ["profile", "ps", "post"];
+    STEPS.behaviorFirst = ["post", "profile", "ps"];
+    startSession(self, cond, order, list, { seed, scenarioOrder: so, selfItems, gender: params.get("g") });
+    trialIdx = tIdx; stepIdx = 0;
+    prepareTrial(session.trials[trialIdx]);
+    runStep();
+  }
+}
+
+function finishTrialMode(t) {
+  const n = "t" + t.trial + "_";
+  const f = {};
+  // 只存算不回來的東西。情境、動機、帳號、貼文可用 scen_order + list 查表還原；
+  // 客觀距離（MAD、r）可用 self_* 和 target_* 在 R 裡算。
+  TRAITS.forEach(x => f[n + "target_" + x.code] = t.target.values[x.code]);
+  f[n + "ps"] = t.perceivedSimilarity;
+  TRAITS.forEach(x => f[n + "ti_" + x.code] = t.targetItemRatings[x.code]);
+  f[n + "profile_ms"] = t.timing.profileMs;
+  f[n + "post_ms"] = t.timing.postMs;
+  f[n + "ps_ms"] = t.timing.psMs;
+  // 給接下來道德判斷頁面用的「目前這一則」
+  f["current_post_text"] = t._post.html.replace(/\n/g, "<br>");
+  f["current_handle"] = t.handle;
+  sendToParent({ type: "exp3:trial", t: t.trial, fields: f });
+  showFinished("看完了！接下來請回答幾個問題。");
+}
+
+/* 開發用：網址加 ?demo=1 會跳過量表，直接用範例分數產生結果頁 */
+if (new URLSearchParams(location.search).get("demo") === "1") {
+  showResults({ E: 3.75, A: 4.25, C: 1.25, N: 5, O: 4.25 });
+}
+
+/* 深色／淺色模式切換時重畫，讓圖的顏色跟著變 */
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+  if (lastScores) drawRadar(document.getElementById("radar"), currentProfiles());
+});
+</script>
+
+<script>
+/* Demo 用：組別、順序、拉丁方格由工具列決定（作答量表後按「繼續」也會套用） */
+pickCondition = () => pvCond.value;
+pickOrder = () => pvOrder.value;
+pickList = () => Number(pvList.value);
+const DEMO_SELF = { E: 3.75, A: 4.25, C: 1.25, N: 5, O: 4.25 };
+// 跟 DEMO_SELF 一致的 20 題原始作答（題號 1–20）
+const DEMO_RESP = {1:4,2:5,3:1,4:5,5:4,6:2,7:1,8:5,9:1,10:2,11:4,12:3,13:2,14:5,15:2,16:3,17:2,18:5,19:1,20:1};
+pvSkip.addEventListener("click", () => { lastScores = DEMO_SELF; lastResponses = DEMO_RESP; beginTrials(DEMO_SELF, pickCondition(), pickOrder(), pickList()); });
+pvRestart.addEventListener("click", () => { document.getElementById("restart").click(); });
+setInterval(() => {
+  if (!session || trialIdx >= session.trials.length) { pvInfo.textContent = ""; return; }
+  const t = session.trials[trialIdx];
+  pvInfo.textContent = `第 ${t.trial} 位：${SCENARIO_LABEL[t.scenario]}・${MOTIVE_LABEL[t.motive]}・${STEPS[session.order][stepIdx]}`;
+}, 300);
+</script>
+</body>
+</html>
