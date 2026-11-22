@@ -18,7 +18,9 @@ let onload = null, unloads = [];
 const Qualtrics = { SurveyEngine: {
   addOnload(fn) { onload = fn; },
   addOnUnload(fn) { unloads.push(fn); },
-  setEmbeddedData(k, v) { ED[k] = v; render(); },
+  // ?layout=simple 模擬新版版面：setEmbeddedData 沒作用，setJSEmbeddedData 存成 __js_ 開頭
+  setEmbeddedData(k, v) { if (urlp.get("layout") !== "simple") { ED[k] = v; render(); } },
+  setJSEmbeddedData(k, v) { if (urlp.get("layout") === "simple") { ED["__js_" + k] = v; render(); } },
 }};
 const qObj = {
   hideNextButton() { document.getElementById("next").style.display = "none"; },
@@ -29,7 +31,7 @@ function render() { document.getElementById("ed").textContent = JSON.stringify(E
 function pipe(code, lm) {
   return code.replace(/\$\{lm:\/\/Field\/1\}/g, lm)
              .replace(/\$\{e:\/\/Field\/([A-Za-z0-9_]+)\}/g, (_, k) => ED[k] ?? "")
-             .replace('"https://YOUR-ACCOUNT.github.io/YOUR-REPO/"', JSON.stringify(BASE));
+             .replace(/var BASE_URL = "[^"]*";/, "var BASE_URL = " + JSON.stringify(BASE) + ";");
 }
 async function runQuestion(file, lm) {
   unloads.forEach(f => f()); unloads = [];
@@ -41,8 +43,8 @@ async function runQuestion(file, lm) {
 function judgmentPage(n) {
   unloads.forEach(f => f()); unloads = [];
   document.getElementById("q").innerHTML =
-    `<p><b>（Qualtrics 原生題目）請評估 ${ED.current_handle} 的這則貼文：</b></p>
-     <blockquote>${ED.current_post_text}</blockquote>
+    `<p><b>（Qualtrics 原生題目）請評估 ${ED.current_handle ?? ED.__js_current_handle} 的這則貼文：</b></p>
+     <blockquote>${ED.current_post_text ?? ED.__js_current_post_text}</blockquote>
      <p>這個行為有多不道德？ 1 … 7 <input id="mj" type="number" min="1" max="7" value="4"></p>`;
   qObj.showNextButton();
 }

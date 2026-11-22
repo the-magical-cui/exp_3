@@ -25,6 +25,15 @@
 
 ## 二、Qualtrics 設定
 
+### 先確認版面：Simple layout（新版）要多一個步驟
+
+在 Survey → Look & Feel → Layout 可以看到用的是哪種版面。
+
+- **Simple layout**：JavaScript 存的欄位，Qualtrics 只接受 `__js_` 開頭的名稱。宣告欄位請用 `qualtrics/embedded_data_fields_simple_layout.txt`（`cond`、`order`、`list`、`gender` 不加前綴，其他都加 `__js_`）。道德判斷頁的 piping 也要用 `__js_` 版本：`${e://Field/__js_current_handle}`、`${e://Field/__js_current_post_text}`。
+- **其他版面（Flat、Classic 等）**：用 `qualtrics/embedded_data_fields.txt`，名稱不加前綴。
+
+兩支 JavaScript 兩種版面都能用，不用改。
+
 ### Survey Flow（由上到下）
 
 1. **Embedded Data**：宣告下面所有欄位（值留空）。沒有宣告的欄位，JavaScript 存不進去。完整清單一行一個，在 `qualtrics/embedded_data_fields.txt`。

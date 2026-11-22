@@ -1287,10 +1287,18 @@ if (MODE === "trial") {
   if (!["profileFirst", "behaviorFirst"].includes(order)) problems.push("order");
   if (![1, 2, 3].includes(list)) problems.push("list");
   if (so.length !== 3) problems.push("so");
-  if (!Number.isFinite(seed)) problems.push("seed");
+  if (!params.get("seed") || !Number.isFinite(seed)) problems.push("seed");
   if (ipRaw.length !== 20 || ipRaw.some(v => !(v >= 1 && v <= 5 && Number.isInteger(v)))) problems.push("ip");
   if (problems.length) {
-    document.body.innerHTML = `<main><div class="card"><h2>參數錯誤</h2><p>缺少或不正確：${problems.join("、")}</p></div></main>`;
+    // 列出實際收到的值，方便判斷是「沒傳進來」（空白）還是「值不對」
+    const esc = v => String(v).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+    const rows = ["t", "cond", "order", "list", "so", "seed", "E", "A", "C", "N", "O", "g", "ip"].map(k => {
+      const v = params.get(k);
+      const shown = v === null ? "（沒有這個參數）" : v === "" ? "（空白）" : esc(v);
+      return `<tr><td style="padding:2px 10px 2px 0"><code>${k}</code></td><td style="word-break:break-all">${shown}</td></tr>`;
+    }).join("");
+    document.body.innerHTML = `<main><div class="card"><h2>參數錯誤</h2><p>缺少或不正確：${problems.join("、")}</p>
+      <p class="muted" style="margin-top:12px">實際收到的值：</p><table style="font-size:0.85rem">${rows}</table></div></main>`;
     sendToParent({ type: "exp3:error", problems });
   } else {
     STEPS.profileFirst = ["profile", "ps", "post"];
